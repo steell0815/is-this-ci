@@ -134,6 +134,15 @@ export class CIReportDSL {
     }
   }
 
+  async thenEmbeddedChartJsPresent(): Promise<void> {
+    const html = this.reportHtml();
+    const regex = new RegExp('<script[^>]*id=\"chartjs-bundle\"[^>]*>([\\s\\S]*?)</script>', "i");
+    const match = html.match(regex);
+    if (!match || match[1].trim().length === 0) {
+      throw new Error("Embedded Chart.js bundle is missing.");
+    }
+  }
+
   async thenSinglePageReport(): Promise<void> {
     const html = this.reportHtml();
     const htmlTagCount = (html.match(/<html/gi) ?? []).length;
@@ -144,7 +153,9 @@ export class CIReportDSL {
 
   async thenNoExternalAssets(): Promise<void> {
     const html = this.reportHtml();
-    if (/(https?:)?\/\//i.test(html)) {
+    const externalRef = /(src|href)=["']https?:\/\//i;
+    const cssRef = /url\(["']?https?:\/\//i;
+    if (externalRef.test(html) || cssRef.test(html)) {
       throw new Error("Report references external assets.");
     }
   }

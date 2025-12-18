@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 export type DelayBucket = "<1h" | "1-4h" | "4-8h" | ">8h";
 
@@ -303,6 +304,8 @@ function renderReportHtml(data: ReportData): string {
     renderSection("cluster_details", "Cluster Details", data.cluster_details, tableTooltips, columnTooltips)
   ].join("\n");
 
+  const chartJsBundle = loadChartJsBundle();
+
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -371,13 +374,7 @@ function renderReportHtml(data: ReportData): string {
     <div class="meta">Generated locally from git log data.</div>
   </header>
   ${sections}
-  <script>
-    (function () {
-      if (!window.Chart) {
-        window.Chart = function () { return {}; };
-      }
-    })();
-  </script>
+  <script id="chartjs-bundle">${chartJsBundle}</script>
 </body>
 </html>`;
 }
@@ -430,4 +427,9 @@ function escapeHtml(value: string): string {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+function loadChartJsBundle(): string {
+  const bundlePath = resolve(process.cwd(), "node_modules", "chart.js", "dist", "chart.umd.js");
+  return readFileSync(bundlePath, "utf8");
 }

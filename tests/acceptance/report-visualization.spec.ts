@@ -17,5 +17,7 @@ describe("report visualization", () => {
     await dsl.thenChartDataMatchesTable("top10_authors");
     await dsl.thenChartDataMatchesTable("cluster_summary");
     await dsl.thenChartDataMatchesTable("cluster_details");
+
+    await dsl.thenEmbeddedChartJsPresent();
   });
 });
