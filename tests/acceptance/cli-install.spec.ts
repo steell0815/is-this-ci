@@ -12,5 +12,7 @@ describe("cli installation", () => {
     await dsl.thenCliSourceUsesJsExtension();
     await dsl.thenCliPassesProjectRootEnv();
     await dsl.thenCliWrapperNotGitignored();
+    await dsl.thenPublishedFilesInclude(["dist", "bin"]);
+    await dsl.thenPrepackRunsBuild();
   });
 });

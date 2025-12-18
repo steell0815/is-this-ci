@@ -256,6 +256,30 @@ export class CIReportDSL {
     }
   }
 
+  async thenPublishedFilesInclude(paths: string[]): Promise<void> {
+    const pkg = this.session.readPackageJson();
+    const files = pkg.files as string[] | undefined;
+    if (!files || files.length === 0) {
+      throw new Error("package.json is missing a files list for publishing.");
+    }
+    paths.forEach((path) => {
+      if (!files.includes(path)) {
+        throw new Error(`package.json files does not include ${path}.`);
+      }
+    });
+  }
+
+  async thenPrepackRunsBuild(): Promise<void> {
+    const pkg = this.session.readPackageJson();
+    const scripts = pkg.scripts as Record<string, string> | undefined;
+    if (!scripts?.prepack) {
+      throw new Error("package.json is missing a prepack script.");
+    }
+    if (!scripts.prepack.includes("build")) {
+      throw new Error("prepack script does not run the build.");
+    }
+  }
+
   async thenBuildIncludesSbom(_outputPath: string): Promise<void> {
     const pkg = this.session.readPackageJson();
     const scripts = pkg.scripts as Record<string, string> | undefined;

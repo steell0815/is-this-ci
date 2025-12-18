@@ -5,9 +5,16 @@
   "bin": {
     "is-this-ci": "bin/is-this-ci.js"
   },
+  "files": [
+    "bin",
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "is-this-ci": "tsx src/cli.ts",
     "build": "node scripts/bump-version.js && tsc -p tsconfig.json && npm run sbom",
+    "prepack": "npm run build",
     "prepare": "npm run build",
     "sbom": "cyclonedx-npm --output-file dist/sbom.json --output-format json",
     "test": "vitest run",
