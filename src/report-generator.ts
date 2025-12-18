@@ -305,6 +305,7 @@ function renderReportHtml(data: ReportData): string {
   ].join("\n");
 
   const chartJsBundle = loadChartJsBundle();
+  const chartInitScript = buildChartInitScript();
 
   return `<!doctype html>
 <html lang="en">
@@ -360,7 +361,9 @@ function renderReportHtml(data: ReportData): string {
     canvas {
       width: 100%;
       height: 240px;
+      max-height: 240px;
       border: 1px dashed var(--table-border);
+      display: block;
     }
     .meta {
       color: var(--muted);
@@ -375,6 +378,7 @@ function renderReportHtml(data: ReportData): string {
   </header>
   ${sections}
   <script id="chartjs-bundle">${chartJsBundle}</script>
+  <script id="chart-init">${chartInitScript}</script>
 </body>
 </html>`;
 }
@@ -415,8 +419,8 @@ function renderSection(
     <tbody>${body}</tbody>
   </table>
   <canvas data-chart-id="${tableId}" id="chart-${tableId}"></canvas>
-  <script type="application/json" id="table-data-${tableId}">${escapeHtml(tableData)}</script>
-  <script type="application/json" id="chart-data-${tableId}">${escapeHtml(tableData)}</script>
+  <script type="application/json" id="table-data-${tableId}">${safeJson(tableData)}</script>
+  <script type="application/json" id="chart-data-${tableId}">${safeJson(tableData)}</script>
 </section>`;
 }
 
@@ -429,7 +433,70 @@ function escapeHtml(value: string): string {
     .replace(/'/g, "&#39;");
 }
 
+function safeJson(value: string): string {
+  return value.replace(/</g, "\\u003c");
+}
+
 function loadChartJsBundle(): string {
   const bundlePath = resolve(process.cwd(), "node_modules", "chart.js", "dist", "chart.umd.js");
   return readFileSync(bundlePath, "utf8");
+}
+
+function buildChartInitScript(): string {
+  return `
+(function () {
+  if (!window.Chart) {
+    return;
+  }
+
+  function readJson(id) {
+    var node = document.getElementById(id);
+    if (!node) return [];
+    try {
+      return JSON.parse(node.textContent || "[]");
+    } catch (err) {
+      return [];
+    }
+  }
+
+  function buildChart(tableId, labelKey, valueKey, chartType, unitLabel) {
+    var data = readJson("chart-data-" + tableId);
+    var canvas = document.getElementById("chart-" + tableId);
+    if (!canvas || data.length === 0) return;
+
+    var labels = data.map(function (row) { return row[labelKey]; });
+    var values = data.map(function (row) { return row[valueKey]; });
+    var palette = ["#2f5d50", "#6b8f71", "#9aa874", "#c4c9a4", "#d7d0b7", "#bfa88e", "#9c7f6b", "#6e4c3c"];
+    var colors = values.map(function (_value, idx) { return palette[idx % palette.length]; });
+
+    new Chart(canvas.getContext("2d"), {
+      type: chartType,
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: unitLabel,
+            data: values,
+            backgroundColor: colors,
+            borderColor: "rgba(47, 93, 80, 0.9)",
+            borderWidth: 1
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: true, position: "right" },
+          tooltip: { callbacks: { label: function (context) { return context.label + ": " + context.raw; } } }
+        }
+      }
+    });
+  }
+
+  buildChart("overall_buckets", "bucket", "count", "polarArea", "Commits");
+  buildChart("top10_authors", "author", "commits", "polarArea", "Commits");
+  buildChart("cluster_summary", "dominant_delay_bucket", "commits", "doughnut", "Commits");
+  buildChart("cluster_details", "author", "commits", "polarArea", "Commits");
+})();`;
 }

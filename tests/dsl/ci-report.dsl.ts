@@ -134,12 +134,28 @@ export class CIReportDSL {
     }
   }
 
+  async thenChartDataIsRawJson(tableId: string): Promise<void> {
+    const raw = this.readEmbeddedRaw(tableId, "chart-data");
+    if (raw.includes("&quot;") || raw.includes("&lt;") || raw.includes("&gt;")) {
+      throw new Error(`Chart data for ${tableId} is HTML-escaped instead of raw JSON.`);
+    }
+  }
+
   async thenEmbeddedChartJsPresent(): Promise<void> {
     const html = this.reportHtml();
     const regex = new RegExp('<script[^>]*id=\"chartjs-bundle\"[^>]*>([\\s\\S]*?)</script>', "i");
     const match = html.match(regex);
     if (!match || match[1].trim().length === 0) {
       throw new Error("Embedded Chart.js bundle is missing.");
+    }
+  }
+
+  async thenChartInitScriptPresent(): Promise<void> {
+    const html = this.reportHtml();
+    const regex = new RegExp('<script[^>]*id=\"chart-init\"[^>]*>([\\s\\S]*?)</script>', "i");
+    const match = html.match(regex);
+    if (!match || match[1].trim().length === 0) {
+      throw new Error("Chart initialization script is missing.");
     }
   }
 
@@ -302,14 +318,19 @@ export class CIReportDSL {
   }
 
   private readEmbeddedJson(tableId: string, prefix: string): unknown {
+    const raw = this.readEmbeddedRaw(tableId, prefix);
+    const jsonText = this.unescapeHtml(raw.trim());
+    return JSON.parse(jsonText);
+  }
+
+  private readEmbeddedRaw(tableId: string, prefix: string): string {
     const html = this.reportHtml();
     const regex = new RegExp(`<script[^>]*id=\\\"${prefix}-${tableId}\\\"[^>]*>([\\s\\S]*?)<\\/script>`, "i");
     const match = regex.exec(html);
     if (!match) {
       throw new Error(`Missing ${prefix} for ${tableId}.`);
     }
-    const jsonText = this.unescapeHtml(match[1].trim());
-    return JSON.parse(jsonText);
+    return match[1];
   }
 
   private unescapeHtml(value: string): string {
