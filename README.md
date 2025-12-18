@@ -70,3 +70,8 @@ To remove the global install later:
 ```sh
 npm uninstall -g is-this-ci
 ```
+
+## Publish
+```
+npm publish
+```
