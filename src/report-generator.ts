@@ -65,7 +65,8 @@ export function generateReport(options: ReportOptions): string {
 
   const repoName = readRepoName(options.repoDir);
   const generatedAt = formatLocalTimestamp(new Date());
-  const html = renderReportHtml(data, { repoName, branch: options.branch, generatedAt });
+  const sbomJson = readSbomJson();
+  const html = renderReportHtml(data, { repoName, branch: options.branch, generatedAt, sbomJson });
   writeFileSync(options.outputPath, html, "utf8");
   return options.outputPath;
 }
@@ -287,9 +288,19 @@ function dailyIntegrationBand(rate: number): string {
   return "daily<30%";
 }
 
+function readSbomJson(): string {
+  try {
+    const root = process.env.IS_THIS_CI_ROOT ?? process.cwd();
+    const sbomPath = resolve(root, "dist", "sbom.json");
+    return readFileSync(sbomPath, "utf8");
+  } catch {
+    return "{}";
+  }
+}
+
 function renderReportHtml(
   data: ReportData,
-  context: { repoName: string; branch: string; generatedAt: string }
+  context: { repoName: string; branch: string; generatedAt: string; sbomJson: string }
 ): string {
   const glossary = {
     tables: {
@@ -528,6 +539,16 @@ function renderReportHtml(
       cursor: pointer;
       background: #fff;
     }
+    .sunshine-link {
+      margin-left: 10px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--table-border);
+      background: #fff;
+      color: var(--accent);
+      font-weight: 600;
+      cursor: pointer;
+    }
     .sidebar {
       position: fixed;
       top: 0;
@@ -564,6 +585,20 @@ function renderReportHtml(
     <h1>Is This CI Report</h1>
     <div class="meta">Repository: ${escapeHtml(context.repoName)} · Branch: ${escapeHtml(context.branch)}</div>
     <div class="meta">Generated locally from git log data at ${escapeHtml(context.generatedAt)}.</div>
+    <div class="meta">
+      SBOM: dist/sbom.json
+      <button
+        class="sunshine-link"
+        type="button"
+        data-sunshine-url="https://cyclonedx.github.io/Sunshine"
+        data-sbom-path="dist/sbom.json"
+      >
+        Open in Sunshine
+      </button>
+      <button class="sunshine-link" type="button" data-sbom-download="true">
+        Download SBOM
+      </button>
+    </div>
   </header>
   <nav class="report-nav" data-nav="report">
     <a href="#overall_buckets">Overall buckets</a>
@@ -581,6 +616,7 @@ function renderReportHtml(
     <p><strong>How it is analyzed</strong></p>
     <p id="glossary-how"></p>
   </aside>
+  <script type="application/json" id="sbom-json">${safeJson(context.sbomJson)}</script>
   <script id="chartjs-bundle">${chartJsBundle}</script>
   <script id="chart-init">${chartInitScript}</script>
 </body>
@@ -767,6 +803,32 @@ function buildChartInitScript(): string {
       });
     }
   }
+
+  document.querySelectorAll(".sunshine-link").forEach(function (button) {
+    button.addEventListener("click", function () {
+      var url = button.getAttribute("data-sunshine-url");
+      var sbom = button.getAttribute("data-sbom-path");
+      if (url) {
+        window.open(url, "_blank");
+        alert("Upload " + sbom + " in Sunshine to analyze vulnerabilities.");
+      }
+    });
+  });
+
+  document.querySelectorAll("[data-sbom-download]").forEach(function (button) {
+    button.addEventListener("click", function () {
+      var sbomNode = document.getElementById("sbom-json");
+      if (!sbomNode) return;
+      var payload = sbomNode.textContent || "{}";
+      var blob = new Blob([payload], { type: "application/json" });
+      var url = URL.createObjectURL(blob);
+      var link = document.createElement("a");
+      link.href = url;
+      link.download = "sbom.json";
+      link.click();
+      URL.revokeObjectURL(url);
+    });
+  });
 
   function readJson(id) {
     var node = document.getElementById(id);

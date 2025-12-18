@@ -11,4 +11,14 @@ describe("report output", () => {
     await dsl.thenSinglePageReport();
     await dsl.thenNoExternalAssets();
   });
+
+  it("embeds the tool sbom and exposes a Sunshine link", async () => {
+    const dsl = new CIReportDSL();
+
+    await dsl.givenRepoFixture("fixtures/cluster-analysis");
+    await dsl.whenGeneratingReport("origin/main");
+
+    await dsl.thenSbomEmbedded();
+    await dsl.thenSunshineLinkPresent();
+  });
 });

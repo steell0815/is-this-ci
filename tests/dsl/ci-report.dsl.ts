@@ -336,6 +336,20 @@ export class CIReportDSL {
     }
   }
 
+  async thenSbomEmbedded(): Promise<void> {
+    const html = this.reportHtml();
+    if (!/id=\"sbom-json\"/i.test(html)) {
+      throw new Error("Embedded sbom json is missing.");
+    }
+  }
+
+  async thenSunshineLinkPresent(): Promise<void> {
+    const html = this.reportHtml();
+    if (!html.includes('data-sunshine-url="https://cyclonedx.github.io/Sunshine"')) {
+      throw new Error("Sunshine link is missing.");
+    }
+  }
+
   private assertBuckets(actual: OverallBucketExpectation[], expected: OverallBucketExpectation[]): void {
     const byBucket = (rows: OverallBucketExpectation[]) =>
       rows.reduce<Record<string, OverallBucketExpectation>>((acc, row) => {
