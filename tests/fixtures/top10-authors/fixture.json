@@ -1,0 +1,153 @@
+{
+  "name": "top10-authors",
+  "branch": "main",
+  "commits": [
+    {
+      "message": "a1-1",
+      "author": { "name": "Alice One", "email": "alice1@example.com" },
+      "committer": { "name": "Alice One", "email": "alice1@example.com" },
+      "authorDate": "2024-01-01T09:30:00Z",
+      "commitDate": "2024-01-01T10:00:00Z"
+    },
+    {
+      "message": "a1-2",
+      "author": { "name": "Alice One", "email": "alice1@example.com" },
+      "committer": { "name": "Alice One", "email": "alice1@example.com" },
+      "authorDate": "2024-01-02T01:00:00Z",
+      "commitDate": "2024-01-02T10:00:00Z"
+    },
+    {
+      "message": "a1-3",
+      "author": { "name": "Alice One", "email": "alice1@example.com" },
+      "committer": { "name": "Alice One", "email": "alice1@example.com" },
+      "authorDate": "2024-01-04T09:30:00Z",
+      "commitDate": "2024-01-04T10:00:00Z"
+    },
+    {
+      "message": "a1-4",
+      "author": { "name": "Alice One", "email": "alice1@example.com" },
+      "committer": { "name": "Alice One", "email": "alice1@example.com" },
+      "authorDate": "2024-01-05T00:00:00Z",
+      "commitDate": "2024-01-05T10:00:00Z"
+    },
+    {
+      "message": "a2-1",
+      "author": { "name": "Bob Two", "email": "bob2@example.com" },
+      "committer": { "name": "Bob Two", "email": "bob2@example.com" },
+      "authorDate": "2024-01-01T09:30:00Z",
+      "commitDate": "2024-01-01T10:00:00Z"
+    },
+    {
+      "message": "a2-2",
+      "author": { "name": "Bob Two", "email": "bob2@example.com" },
+      "committer": { "name": "Bob Two", "email": "bob2@example.com" },
+      "authorDate": "2024-01-02T09:30:00Z",
+      "commitDate": "2024-01-02T10:00:00Z"
+    },
+    {
+      "message": "a2-3",
+      "author": { "name": "Bob Two", "email": "bob2@example.com" },
+      "committer": { "name": "Bob Two", "email": "bob2@example.com" },
+      "authorDate": "2024-01-03T09:30:00Z",
+      "commitDate": "2024-01-03T10:00:00Z"
+    },
+    {
+      "message": "a3-1",
+      "author": { "name": "Cara Three", "email": "cara3@example.com" },
+      "committer": { "name": "Cara Three", "email": "cara3@example.com" },
+      "authorDate": "2024-01-01T00:00:00Z",
+      "commitDate": "2024-01-01T10:00:00Z"
+    },
+    {
+      "message": "a3-2",
+      "author": { "name": "Cara Three", "email": "cara3@example.com" },
+      "committer": { "name": "Cara Three", "email": "cara3@example.com" },
+      "authorDate": "2024-01-05T00:00:00Z",
+      "commitDate": "2024-01-05T10:00:00Z"
+    },
+    {
+      "message": "a3-3",
+      "author": { "name": "Cara Three", "email": "cara3@example.com" },
+      "committer": { "name": "Cara Three", "email": "cara3@example.com" },
+      "authorDate": "2024-01-10T00:00:00Z",
+      "commitDate": "2024-01-10T10:00:00Z"
+    },
+    {
+      "message": "a4-1",
+      "author": { "name": "Drew Four", "email": "drew4@example.com" },
+      "committer": { "name": "Drew Four", "email": "drew4@example.com" },
+      "authorDate": "2024-01-02T09:30:00Z",
+      "commitDate": "2024-01-02T10:00:00Z"
+    },
+    {
+      "message": "a4-2",
+      "author": { "name": "Drew Four", "email": "drew4@example.com" },
+      "committer": { "name": "Drew Four", "email": "drew4@example.com" },
+      "authorDate": "2024-01-03T09:30:00Z",
+      "commitDate": "2024-01-03T10:00:00Z"
+    },
+    {
+      "message": "a5-1",
+      "author": { "name": "Evan Five", "email": "evan5@example.com" },
+      "committer": { "name": "Evan Five", "email": "evan5@example.com" },
+      "authorDate": "2024-01-02T09:30:00Z",
+      "commitDate": "2024-01-02T10:00:00Z"
+    },
+    {
+      "message": "a5-2",
+      "author": { "name": "Evan Five", "email": "evan5@example.com" },
+      "committer": { "name": "Evan Five", "email": "evan5@example.com" },
+      "authorDate": "2024-01-06T09:30:00Z",
+      "commitDate": "2024-01-06T10:00:00Z"
+    },
+    {
+      "message": "a6-1",
+      "author": { "name": "Fay Six", "email": "fay6@example.com" },
+      "committer": { "name": "Fay Six", "email": "fay6@example.com" },
+      "authorDate": "2024-01-03T09:30:00Z",
+      "commitDate": "2024-01-03T10:00:00Z"
+    },
+    {
+      "message": "a6-2",
+      "author": { "name": "Fay Six", "email": "fay6@example.com" },
+      "committer": { "name": "Fay Six", "email": "fay6@example.com" },
+      "authorDate": "2024-01-04T09:30:00Z",
+      "commitDate": "2024-01-04T10:00:00Z"
+    },
+    {
+      "message": "a7-1",
+      "author": { "name": "Gus Seven", "email": "gus7@example.com" },
+      "committer": { "name": "Gus Seven", "email": "gus7@example.com" },
+      "authorDate": "2024-01-03T09:30:00Z",
+      "commitDate": "2024-01-03T10:00:00Z"
+    },
+    {
+      "message": "a8-1",
+      "author": { "name": "Hana Eight", "email": "hana8@example.com" },
+      "committer": { "name": "Hana Eight", "email": "hana8@example.com" },
+      "authorDate": "2024-01-04T09:30:00Z",
+      "commitDate": "2024-01-04T10:00:00Z"
+    },
+    {
+      "message": "a9-1",
+      "author": { "name": "Ivy Nine", "email": "ivy9@example.com" },
+      "committer": { "name": "Ivy Nine", "email": "ivy9@example.com" },
+      "authorDate": "2024-01-05T09:30:00Z",
+      "commitDate": "2024-01-05T10:00:00Z"
+    },
+    {
+      "message": "a10-1",
+      "author": { "name": "Jay Ten", "email": "jay10@example.com" },
+      "committer": { "name": "Jay Ten", "email": "jay10@example.com" },
+      "authorDate": "2024-01-06T09:30:00Z",
+      "commitDate": "2024-01-06T10:00:00Z"
+    },
+    {
+      "message": "a11-1",
+      "author": { "name": "Kai Eleven", "email": "kai11@example.com" },
+      "committer": { "name": "Kai Eleven", "email": "kai11@example.com" },
+      "authorDate": "2024-01-07T09:30:00Z",
+      "commitDate": "2024-01-07T10:00:00Z"
+    }
+  ]
+}

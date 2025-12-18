@@ -1,0 +1,83 @@
+{
+  "name": "cluster-analysis",
+  "branch": "main",
+  "commits": [
+    {
+      "message": "n1",
+      "author": { "name": "Nora Fast", "email": "nora@example.com" },
+      "committer": { "name": "Nora Fast", "email": "nora@example.com" },
+      "authorDate": "2024-02-01T09:30:00Z",
+      "commitDate": "2024-02-01T10:00:00Z"
+    },
+    {
+      "message": "n2",
+      "author": { "name": "Nora Fast", "email": "nora@example.com" },
+      "committer": { "name": "Nora Fast", "email": "nora@example.com" },
+      "authorDate": "2024-02-02T09:30:00Z",
+      "commitDate": "2024-02-02T10:00:00Z"
+    },
+    {
+      "message": "n3",
+      "author": { "name": "Nora Fast", "email": "nora@example.com" },
+      "committer": { "name": "Nora Fast", "email": "nora@example.com" },
+      "authorDate": "2024-02-03T09:30:00Z",
+      "commitDate": "2024-02-03T10:00:00Z"
+    },
+    {
+      "message": "n4",
+      "author": { "name": "Nora Fast", "email": "nora@example.com" },
+      "committer": { "name": "Nora Fast", "email": "nora@example.com" },
+      "authorDate": "2024-02-04T07:00:00Z",
+      "commitDate": "2024-02-04T10:00:00Z"
+    },
+    {
+      "message": "o1",
+      "author": { "name": "Omar Medium", "email": "omar@example.com" },
+      "committer": { "name": "Omar Medium", "email": "omar@example.com" },
+      "authorDate": "2024-02-01T07:00:00Z",
+      "commitDate": "2024-02-01T10:00:00Z"
+    },
+    {
+      "message": "o2",
+      "author": { "name": "Omar Medium", "email": "omar@example.com" },
+      "committer": { "name": "Omar Medium", "email": "omar@example.com" },
+      "authorDate": "2024-02-02T07:30:00Z",
+      "commitDate": "2024-02-02T10:00:00Z"
+    },
+    {
+      "message": "o3",
+      "author": { "name": "Omar Medium", "email": "omar@example.com" },
+      "committer": { "name": "Omar Medium", "email": "omar@example.com" },
+      "authorDate": "2024-02-05T07:15:00Z",
+      "commitDate": "2024-02-05T10:00:00Z"
+    },
+    {
+      "message": "o4",
+      "author": { "name": "Omar Medium", "email": "omar@example.com" },
+      "committer": { "name": "Omar Medium", "email": "omar@example.com" },
+      "authorDate": "2024-02-06T00:00:00Z",
+      "commitDate": "2024-02-06T10:00:00Z"
+    },
+    {
+      "message": "p1",
+      "author": { "name": "Pia Slow", "email": "pia@example.com" },
+      "committer": { "name": "Pia Slow", "email": "pia@example.com" },
+      "authorDate": "2024-02-01T00:00:00Z",
+      "commitDate": "2024-02-01T10:00:00Z"
+    },
+    {
+      "message": "p2",
+      "author": { "name": "Pia Slow", "email": "pia@example.com" },
+      "committer": { "name": "Pia Slow", "email": "pia@example.com" },
+      "authorDate": "2024-02-06T04:00:00Z",
+      "commitDate": "2024-02-06T10:00:00Z"
+    },
+    {
+      "message": "p3",
+      "author": { "name": "Pia Slow", "email": "pia@example.com" },
+      "committer": { "name": "Pia Slow", "email": "pia@example.com" },
+      "authorDate": "2024-02-11T00:00:00Z",
+      "commitDate": "2024-02-11T10:00:00Z"
+    }
+  ]
+}
