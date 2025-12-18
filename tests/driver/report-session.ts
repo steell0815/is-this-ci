@@ -9,12 +9,36 @@ export class ReportSession {
   private gitLogReader = new GitLogReader();
   private repoDir: string | null = null;
   private reportPath: string | null = null;
+  private projectRoot: string | null = null;
 
   createFixtureRepo(fixtureName: string): void {
     const normalized = fixtureName.replace(/^fixtures[\\/]/, "");
     const fixturePath = join(process.cwd(), "tests", "fixtures", normalized, "fixture.json");
     const result = this.fixtureDriver.createFromFixture(fixturePath);
     this.repoDir = result.repoDir;
+  }
+
+  setProjectRoot(rootDir: string): void {
+    this.projectRoot = rootDir;
+  }
+
+  readPackageJson(): Record<string, unknown> {
+    if (!this.projectRoot) {
+      throw new Error("Project root not set. Call givenProjectRoot first.");
+    }
+    const pkgPath = join(this.projectRoot, "package.json");
+    return JSON.parse(readFileSync(pkgPath, "utf8")) as Record<string, unknown>;
+  }
+
+  resolveProjectPath(relativePath: string): string {
+    if (!this.projectRoot) {
+      throw new Error("Project root not set. Call givenProjectRoot first.");
+    }
+    return join(this.projectRoot, relativePath);
+  }
+
+  readProjectFile(relativePath: string): string {
+    return readFileSync(this.resolveProjectPath(relativePath), "utf8");
   }
 
   readOverallBuckets(analysisBranch: string): OverallBuckets {

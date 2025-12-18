@@ -438,7 +438,8 @@ function safeJson(value: string): string {
 }
 
 function loadChartJsBundle(): string {
-  const bundlePath = resolve(process.cwd(), "node_modules", "chart.js", "dist", "chart.umd.js");
+  const root = process.env.IS_THIS_CI_ROOT ?? process.cwd();
+  const bundlePath = resolve(root, "node_modules", "chart.js", "dist", "chart.umd.js");
   return readFileSync(bundlePath, "utf8");
 }
 

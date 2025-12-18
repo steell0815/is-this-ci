@@ -3,16 +3,22 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "bin": {
+    "is-this-ci": "bin/is-this-ci.js"
+  },
   "scripts": {
     "is-this-ci": "tsx src/cli.ts",
     "build": "tsc -p tsconfig.json",
+    "prepare": "npm run build",
     "test": "vitest run",
     "test:watch": "vitest"
   },
+  "dependencies": {
+    "chart.js": "^4.4.3",
+    "tsx": "^4.7.0"
+  },
   "devDependencies": {
     "@types/node": "^20.11.30",
-    "chart.js": "^4.4.3",
-    "tsx": "^4.7.0",
     "typescript": "^5.4.5",
     "vitest": "^4.0.16"
   }

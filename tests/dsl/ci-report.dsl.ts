@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { ReportSession } from "../driver/report-session";
 
 export type OverallBucketExpectation = {
@@ -47,6 +48,10 @@ export class CIReportDSL {
     this.analysisBranch = analysisBranch;
     this.session.generateReport(analysisBranch);
     this.reportHtmlCache = null;
+  }
+
+  async givenProjectRoot(): Promise<void> {
+    this.session.setProjectRoot(process.cwd());
   }
 
   async thenOverallBucketsEqual(expected: OverallBucketExpectation[]): Promise<void> {
@@ -173,6 +178,66 @@ export class CIReportDSL {
     const cssRef = /url\(["']?https?:\/\//i;
     if (externalRef.test(html) || cssRef.test(html)) {
       throw new Error("Report references external assets.");
+    }
+  }
+
+  async thenCliCommandDeclared(_commandName: string): Promise<void> {
+    const pkg = this.session.readPackageJson();
+    const bin = pkg.bin;
+
+    if (!bin || typeof bin !== "object") {
+      throw new Error("package.json is missing a bin entry.");
+    }
+
+    const path = (bin as Record<string, string>)[_commandName];
+    if (!path) {
+      throw new Error(`package.json bin does not declare ${_commandName}.`);
+    }
+  }
+
+  async thenCliWrapperExists(_commandName: string): Promise<void> {
+    const pkg = this.session.readPackageJson();
+    const bin = pkg.bin as Record<string, string>;
+    const path = bin?.[_commandName];
+    if (!path) {
+      throw new Error(`package.json bin does not declare ${_commandName}.`);
+    }
+    const fullPath = this.session.resolveProjectPath(path);
+    try {
+      const contents = readFileSync(fullPath, "utf8");
+      if (!contents.startsWith("#!")) {
+        throw new Error(`CLI wrapper ${path} is missing a shebang.`);
+      }
+    } catch (error) {
+      throw new Error(`CLI wrapper ${path} does not exist.`);
+    }
+  }
+
+  async thenCliWrapperTargetsDist(_commandName: string): Promise<void> {
+    const pkg = this.session.readPackageJson();
+    const bin = pkg.bin as Record<string, string>;
+    const path = bin?.[_commandName];
+    if (!path) {
+      throw new Error(`package.json bin does not declare ${_commandName}.`);
+    }
+    const fullPath = this.session.resolveProjectPath(path);
+    const contents = readFileSync(fullPath, "utf8");
+    if (!contents.includes("dist/cli.js")) {
+      throw new Error(`CLI wrapper ${path} does not target dist/cli.js.`);
+    }
+  }
+
+  async thenCliSourceUsesJsExtension(): Promise<void> {
+    const source = this.session.readProjectFile("src/cli.ts");
+    if (!source.includes('from "./report-generator.js"')) {
+      throw new Error("src/cli.ts should import ./report-generator.js for Node ESM compatibility.");
+    }
+  }
+
+  async thenCliPassesProjectRootEnv(): Promise<void> {
+    const wrapper = this.session.readProjectFile("bin/is-this-ci.js");
+    if (!wrapper.includes("IS_THIS_CI_ROOT")) {
+      throw new Error("CLI wrapper should pass IS_THIS_CI_ROOT for asset resolution.");
     }
   }
 

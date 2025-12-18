@@ -1,7 +1,8 @@
 node_modules
 .dist
 /dist
-
+.bin
+/bin
 *.log
 .DS_Store
 

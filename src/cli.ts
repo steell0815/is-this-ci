@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { generateReport } from "./report-generator";
+import { generateReport } from "./report-generator.js";
 
 const args = process.argv.slice(2);
 const analysisBranch = args[0];
