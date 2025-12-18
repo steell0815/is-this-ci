@@ -241,6 +241,21 @@ export class CIReportDSL {
     }
   }
 
+  async thenBuildIncludesSbom(_outputPath: string): Promise<void> {
+    const pkg = this.session.readPackageJson();
+    const scripts = pkg.scripts as Record<string, string> | undefined;
+    if (!scripts?.build) {
+      throw new Error("package.json is missing a build script.");
+    }
+    if (!scripts.build.includes("sbom") && !scripts.build.includes("cyclonedx")) {
+      throw new Error("build script does not include an sbom step.");
+    }
+    const sbomScript = scripts.sbom ?? "";
+    if (!sbomScript || !sbomScript.includes(_outputPath)) {
+      throw new Error(`sbom script should write to ${_outputPath}.`);
+    }
+  }
+
   private assertBuckets(actual: OverallBucketExpectation[], expected: OverallBucketExpectation[]): void {
     const byBucket = (rows: OverallBucketExpectation[]) =>
       rows.reduce<Record<string, OverallBucketExpectation>>((acc, row) => {
