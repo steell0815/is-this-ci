@@ -21,5 +21,7 @@ describe("report visualization", () => {
 
     await dsl.thenEmbeddedChartJsPresent();
     await dsl.thenChartInitScriptPresent();
+    await dsl.thenChartsLayerSmallValuesOnTop();
+    await dsl.thenChartsUseNearestHover();
   });
 });

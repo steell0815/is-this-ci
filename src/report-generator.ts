@@ -63,7 +63,9 @@ export function generateReport(options: ReportOptions): string {
     cluster_summary: clusterSummary(entries)
   };
 
-  const html = renderReportHtml(data);
+  const repoName = readRepoName(options.repoDir);
+  const generatedAt = formatLocalTimestamp(new Date());
+  const html = renderReportHtml(data, { repoName, branch: options.branch, generatedAt });
   writeFileSync(options.outputPath, html, "utf8");
   return options.outputPath;
 }
@@ -90,6 +92,33 @@ function readLogEntries(repoDir: string, branch: string): LogEntry[] {
       commitDate: parts[4]
     };
   });
+}
+
+function readRepoName(repoDir: string): string {
+  try {
+    const output = execFileSync("git", ["rev-parse", "--show-toplevel"], { cwd: repoDir })
+      .toString("utf8")
+      .trim();
+    if (!output) {
+      return repoDir;
+    }
+    const parts = output.split("/");
+    return parts[parts.length - 1] || repoDir;
+  } catch {
+    return repoDir;
+  }
+}
+
+function formatLocalTimestamp(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hours24 = date.getHours();
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  const ampm = hours24 >= 12 ? "pm" : "am";
+  const hours12 = hours24 % 12 === 0 ? 12 : hours24 % 12;
+  const hours = String(hours12).padStart(2, "0");
+  return `${year}-${month}-${day} ${hours}:${minutes}${ampm}`;
 }
 
 function overallBuckets(entries: LogEntry[]): OverallBucketRow[] {
@@ -258,7 +287,119 @@ function dailyIntegrationBand(rate: number): string {
   return "daily<30%";
 }
 
-function renderReportHtml(data: ReportData): string {
+function renderReportHtml(
+  data: ReportData,
+  context: { repoName: string; branch: string; generatedAt: string }
+): string {
+  const glossary = {
+    tables: {
+      overall_buckets: {
+        title: "Overall buckets",
+        what: "Delay category between author date and committer date",
+        how: "Predefined bins: `<1h`, `1-4h`, `4-8h`, `>8h` based on (committer date − author date) per commit"
+      },
+      top10_authors: {
+        title: "Top 10 authors",
+        what: "Top authors by commit volume and CI behavior",
+        how: "Authors are ranked by commit count, then CI and daily integration metrics are computed"
+      },
+      cluster_summary: {
+        title: "Cluster summary",
+        what: "Cluster rollups by delay and daily integration",
+        how: "Authors grouped by dominant delay bucket and daily integration band"
+      },
+      cluster_details: {
+        title: "Cluster details",
+        what: "Per-author cluster metrics and assignment",
+        how: "Each author is labeled by dominant delay bucket and daily integration band"
+      }
+    },
+    columns: {
+      overall_buckets: {
+        bucket: {
+          what: "Delay category between author date and committer date",
+          how: "Predefined bins: `<1h`, `1-4h`, `4-8h`, `>8h` based on (committer date − author date) per commit"
+        },
+        count: {
+          what: "Number of commits in this delay bucket",
+          how: "Count of commits whose delay falls into the bucket"
+        },
+        percent: {
+          what: "Share of commits in this bucket",
+          how: "count / total_commits * 100, rounded to one decimal"
+        }
+      },
+      top10_authors: {
+        author: {
+          what: "Author identity in git log",
+          how: "Taken from `%an <%ae>` in `git log origin/master`"
+        },
+        commits: {
+          what: "Total commits by that author",
+          how: "Count of commits with matching author identity"
+        },
+        ci_within_8h_percent: {
+          what: "% of that author’s commits integrated within 8 hours",
+          how: "(commits with delay < 8h) / commits * 100"
+        },
+        daily_integration_rate_percent: {
+          what: "% of consecutive active-day gaps that are <= 1 day",
+          how:
+            "Build sorted unique commit dates per author (committer date), compute day gaps, then `gaps<=1 / total_gaps * 100`"
+        },
+        max_day_gap: {
+          what: "Longest gap (in days) between consecutive active days",
+          how: "Max of the day-gap series per author"
+        }
+      },
+      cluster_summary: {
+        dominant_delay_bucket: {
+          what: "Most common delay bucket for authors in the cluster",
+          how: "For each author, pick the delay bucket with the highest commit count; used to label cluster"
+        },
+        daily_integration_band: {
+          what: "Daily integration rate band for the cluster",
+          how:
+            "Predefined bands on per-author daily integration rate: `daily>=70%`, `daily 50-69%`, `daily 30-49%`, `daily<30%`"
+        },
+        authors: {
+          what: "Number of authors in the cluster",
+          how: "Count of authors whose dominant bucket and daily band match the cluster"
+        },
+        commits: {
+          what: "Total commits contributed by authors in the cluster",
+          how: "Sum of commit counts for authors in the cluster"
+        }
+      },
+      cluster_details: {
+        dominant_delay_bucket: {
+          what: "Dominant delay bucket for the author",
+          how: "Most frequent delay bucket in that author's commits"
+        },
+        daily_integration_band: {
+          what: "Daily integration band for the author",
+          how: "Band based on that author's daily integration rate"
+        },
+        author: {
+          what: "Author identity in git log",
+          how: "Taken from `%an <%ae>` in `git log origin/master`"
+        },
+        commits: {
+          what: "Total commits by that author",
+          how: "Count of commits with matching author identity"
+        },
+        daily_integration_rate_percent: {
+          what: "Daily integration rate for the author",
+          how: "See \"daily_integration_rate_percent\" in top10 table; same calculation"
+        },
+        max_day_gap: {
+          what: "Longest gap between consecutive active days for the author",
+          how: "Max gap in days between consecutive commit dates (committer date) for that author"
+        }
+      }
+    }
+  };
+
   const tableTooltips: Record<string, string> = {
     overall_buckets: "Delay buckets across all commits",
     top10_authors: "Top authors by commit volume",
@@ -266,42 +407,12 @@ function renderReportHtml(data: ReportData): string {
     cluster_details: "Per-author cluster metrics and assignment"
   };
 
-  const columnTooltips: Record<string, Record<string, string>> = {
-    overall_buckets: {
-      bucket: "Predefined bins: `<1h`, `1-4h`, `4-8h`, `>8h` based on (committer date − author date) per commit",
-      count: "Count of commits whose delay falls into the bucket",
-      percent: "count / total_commits * 100, rounded to one decimal"
-    },
-    top10_authors: {
-      author: "Taken from `%an <%ae>` in `git log origin/master`",
-      commits: "Count of commits with matching author identity",
-      ci_within_8h_percent: "(commits with delay < 8h) / commits * 100",
-      daily_integration_rate_percent:
-        "Build sorted unique commit dates per author (committer date), compute day gaps, then `gaps<=1 / total_gaps * 100`",
-      max_day_gap: "Max of the day-gap series per author"
-    },
-    cluster_summary: {
-      dominant_delay_bucket: "Most common delay bucket for authors in the cluster",
-      daily_integration_band:
-        "Predefined bands on per-author daily integration rate: `daily>=70%`, `daily 50-69%`, `daily 30-49%`, `daily<30%`",
-      authors: "Count of authors whose dominant bucket and daily band match the cluster",
-      commits: "Sum of commit counts for authors in the cluster"
-    },
-    cluster_details: {
-      dominant_delay_bucket: "Most frequent delay bucket in that author's commits",
-      daily_integration_band: "Band based on that author’s daily integration rate",
-      author: "Taken from `%an <%ae>` in `git log origin/master`",
-      commits: "Count of commits with matching author identity",
-      daily_integration_rate_percent: "See \"daily_integration_rate_percent\" in top10 table; same calculation",
-      max_day_gap: "Max gap in days between consecutive commit dates (committer date) for that author"
-    }
-  };
-
   const sections = [
-    renderSection("overall_buckets", "Overall Buckets", data.overall_buckets, tableTooltips, columnTooltips),
-    renderSection("top10_authors", "Top 10 Authors", data.top10_authors, tableTooltips, columnTooltips),
-    renderSection("cluster_summary", "Cluster Summary", data.cluster_summary, tableTooltips, columnTooltips),
-    renderSection("cluster_details", "Cluster Details", data.cluster_details, tableTooltips, columnTooltips)
+    renderSection("overall_buckets", "Overall Buckets", data.overall_buckets, glossary, tableTooltips),
+    renderSection("top10_authors", "Top 10 Authors", data.top10_authors, glossary, tableTooltips),
+    renderSection("cluster_summary", "Cluster Summary", data.cluster_summary, glossary, tableTooltips),
+    renderSection("cluster_details", "Cluster Details", data.cluster_details, glossary, tableTooltips),
+    renderGlossarySection(glossary)
   ].join("\n");
 
   const chartJsBundle = loadChartJsBundle();
@@ -329,6 +440,11 @@ function renderReportHtml(data: ReportData): string {
     }
     header {
       padding: 32px 24px 8px;
+      border-bottom: 1px solid var(--table-border);
+      position: sticky;
+      top: 0;
+      background: var(--bg);
+      z-index: 10;
     }
     h1 {
       margin: 0 0 8px;
@@ -338,6 +454,34 @@ function renderReportHtml(data: ReportData): string {
       margin: 0 0 12px;
       font-size: 22px;
       color: var(--accent);
+    }
+    nav.report-nav {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 12px 24px 20px;
+      background: var(--bg);
+      position: sticky;
+      top: 92px;
+      z-index: 9;
+      border-bottom: 1px solid var(--table-border);
+    }
+    nav.report-nav a {
+      text-decoration: none;
+      color: var(--accent);
+      font-weight: 600;
+      font-size: 13px;
+      letter-spacing: 0.02em;
+      padding: 6px 10px;
+      border: 1px solid var(--table-border);
+      border-radius: 999px;
+      background: #fff;
+    }
+    .page {
+      display: none;
+    }
+    .page.is-active {
+      display: block;
     }
     .report-section {
       padding: 24px;
@@ -360,8 +504,8 @@ function renderReportHtml(data: ReportData): string {
     }
     canvas {
       width: 100%;
-      height: 240px;
-      max-height: 240px;
+      height: 360px;
+      max-height: 360px;
       border: 1px dashed var(--table-border);
       display: block;
     }
@@ -369,14 +513,74 @@ function renderReportHtml(data: ReportData): string {
       color: var(--muted);
       font-size: 13px;
     }
+    .glossary-trigger {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      margin-left: 6px;
+      border-radius: 999px;
+      border: 1px solid var(--table-border);
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 12px;
+      cursor: pointer;
+      background: #fff;
+    }
+    .sidebar {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: min(360px, 90vw);
+      height: 100vh;
+      background: #fff;
+      border-left: 1px solid var(--table-border);
+      padding: 24px;
+      transform: translateX(100%);
+      transition: transform 0.25s ease;
+      z-index: 20;
+      box-shadow: -12px 0 30px rgba(0, 0, 0, 0.08);
+    }
+    .sidebar.is-open {
+      transform: translateX(0);
+    }
+    .sidebar h3 {
+      margin-top: 0;
+    }
+    .sidebar .close {
+      background: none;
+      border: none;
+      font-size: 20px;
+      position: absolute;
+      right: 16px;
+      top: 12px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
   <header>
     <h1>Is This CI Report</h1>
-    <div class="meta">Generated locally from git log data.</div>
+    <div class="meta">Repository: ${escapeHtml(context.repoName)} · Branch: ${escapeHtml(context.branch)}</div>
+    <div class="meta">Generated locally from git log data at ${escapeHtml(context.generatedAt)}.</div>
   </header>
+  <nav class="report-nav" data-nav="report">
+    <a href="#overall_buckets">Overall buckets</a>
+    <a href="#top10_authors">Top 10 authors</a>
+    <a href="#cluster_summary">Cluster summary</a>
+    <a href="#cluster_details">Cluster details</a>
+    <a href="#glossary">Glossary</a>
+  </nav>
   ${sections}
+  <aside class="sidebar" id="glossary-sidebar" aria-hidden="true">
+    <button class="close" type="button" aria-label="Close">&times;</button>
+    <h3 id="glossary-title"></h3>
+    <p><strong>What it represents</strong></p>
+    <p id="glossary-what"></p>
+    <p><strong>How it is analyzed</strong></p>
+    <p id="glossary-how"></p>
+  </aside>
   <script id="chartjs-bundle">${chartJsBundle}</script>
   <script id="chart-init">${chartInitScript}</script>
 </body>
@@ -387,16 +591,25 @@ function renderSection(
   tableId: string,
   title: string,
   rows: Array<Record<string, string | number>>,
-  tableTooltips: Record<string, string>,
-  columnTooltips: Record<string, Record<string, string>>
+  glossary: {
+    tables: Record<string, { title: string; what: string; how: string }>;
+    columns: Record<string, Record<string, { what: string; how: string }>>;
+  },
+  tableTooltips: Record<string, string>
 ): string {
-  const columns = rows.length > 0 ? Object.keys(rows[0]) : Object.keys(columnTooltips[tableId] ?? {});
+  const columns = rows.length > 0 ? Object.keys(rows[0]) : Object.keys(glossary.columns[tableId] ?? {});
   const header = columns
     .map(
       (column) =>
-        `<th data-column="${column}" title="${escapeHtml(columnTooltips[tableId]?.[column] ?? "")}">${
+        `<th data-column="${column}" title="${escapeHtml(glossary.columns[tableId]?.[column]?.how ?? "")}">${
           column
-        }</th>`
+        }${renderGlossaryIcon({
+          tableId,
+          columnId: column,
+          title: `${title} - ${column}`,
+          what: glossary.columns[tableId]?.[column]?.what ?? "",
+          how: glossary.columns[tableId]?.[column]?.how ?? ""
+        })}</th>`
     )
     .join("");
 
@@ -411,9 +624,16 @@ function renderSection(
 
   const tableData = JSON.stringify(rows);
 
+  const tableGlossary = glossary.tables[tableId];
   return `
-<section class="report-section" id="section-${tableId}">
-  <h2>${title}</h2>
+<section class="report-section page" id="section-${tableId}">
+  <a id="${tableId}" class="page-anchor"></a>
+  <h2>${title}${renderGlossaryIcon({
+    tableId,
+    title,
+    what: tableGlossary?.what ?? "",
+    how: tableGlossary?.how ?? ""
+  })}</h2>
   <table data-table="${tableId}" title="${escapeHtml(tableTooltips[tableId] ?? "")}">
     <thead><tr>${header}</tr></thead>
     <tbody>${body}</tbody>
@@ -421,6 +641,40 @@ function renderSection(
   <canvas data-chart-id="${tableId}" id="chart-${tableId}"></canvas>
   <script type="application/json" id="table-data-${tableId}">${safeJson(tableData)}</script>
   <script type="application/json" id="chart-data-${tableId}">${safeJson(tableData)}</script>
+</section>`;
+}
+
+function renderGlossarySection(glossary: {
+  tables: Record<string, { title: string; what: string; how: string }>;
+  columns: Record<string, Record<string, { what: string; how: string }>>;
+}): string {
+  const tableEntries = Object.entries(glossary.tables)
+    .map(([, entry]) => {
+      return `<tr><td>${escapeHtml(entry.title)}</td><td>${escapeHtml(entry.what)}</td><td>${escapeHtml(
+        entry.how
+      )}</td></tr>`;
+    })
+    .join("");
+
+  const columnEntries = Object.entries(glossary.columns)
+    .flatMap(([tableKey, columns]) =>
+      Object.entries(columns).map(([columnKey, entry]) => {
+        const label = `${tableKey}.${columnKey}`;
+        return `<tr><td>${escapeHtml(label)}</td><td>${escapeHtml(entry.what)}</td><td>${escapeHtml(
+          entry.how
+        )}</td></tr>`;
+      })
+    )
+    .join("");
+
+  return `
+<section class="report-section page" id="section-glossary">
+  <a id="glossary" class="page-anchor"></a>
+  <h2>Glossary</h2>
+  <table data-table="glossary">
+    <thead><tr><th>Topic</th><th>What it represents</th><th>How it is analyzed</th></tr></thead>
+    <tbody>${tableEntries}${columnEntries}</tbody>
+  </table>
 </section>`;
 }
 
@@ -437,6 +691,26 @@ function safeJson(value: string): string {
   return value.replace(/</g, "\\u003c");
 }
 
+function renderGlossaryIcon(input: {
+  tableId: string;
+  columnId?: string;
+  title: string;
+  what: string;
+  how: string;
+}): string {
+  const attrs = [
+    `data-glossary-table=\"${input.tableId}\"`,
+    input.columnId ? `data-glossary-column=\"${input.columnId}\"` : "",
+    `data-glossary-title=\"${escapeHtml(input.title)}\"`,
+    `data-glossary-what=\"${escapeHtml(input.what)}\"`,
+    `data-glossary-how=\"${escapeHtml(input.how)}\"`
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return `<button class="glossary-trigger" type="button" ${attrs} aria-label="Glossary info">i</button>`;
+}
+
 function loadChartJsBundle(): string {
   const root = process.env.IS_THIS_CI_ROOT ?? process.cwd();
   const bundlePath = resolve(root, "node_modules", "chart.js", "dist", "chart.umd.js");
@@ -450,6 +724,50 @@ function buildChartInitScript(): string {
     return;
   }
 
+  var pages = document.querySelectorAll(".page");
+  function showPage(id) {
+    pages.forEach(function (page) {
+      page.classList.remove("is-active");
+    });
+    var target = document.getElementById("section-" + id);
+    if (target) {
+      target.classList.add("is-active");
+    }
+  }
+  var defaultPage = "overall_buckets";
+  if (location.hash) {
+    showPage(location.hash.replace("#", ""));
+  } else {
+    showPage(defaultPage);
+  }
+  window.addEventListener("hashchange", function () {
+    showPage(location.hash.replace("#", ""));
+  });
+
+  var sidebar = document.getElementById("glossary-sidebar");
+  var titleNode = document.getElementById("glossary-title");
+  var whatNode = document.getElementById("glossary-what");
+  var howNode = document.getElementById("glossary-how");
+  document.querySelectorAll(".glossary-trigger").forEach(function (button) {
+    button.addEventListener("click", function () {
+      if (!sidebar) return;
+      titleNode.textContent = button.getAttribute("data-glossary-title") || "Glossary";
+      whatNode.textContent = button.getAttribute("data-glossary-what") || "";
+      howNode.textContent = button.getAttribute("data-glossary-how") || "";
+      sidebar.classList.add("is-open");
+      sidebar.setAttribute("aria-hidden", "false");
+    });
+  });
+  if (sidebar) {
+    var closeBtn = sidebar.querySelector(".close");
+    if (closeBtn) {
+      closeBtn.addEventListener("click", function () {
+        sidebar.classList.remove("is-open");
+        sidebar.setAttribute("aria-hidden", "true");
+      });
+    }
+  }
+
   function readJson(id) {
     var node = document.getElementById(id);
     if (!node) return [];
@@ -460,13 +778,37 @@ function buildChartInitScript(): string {
     }
   }
 
+  var zOrderPlugin = {
+    id: "zOrderByValue",
+    beforeDatasetDraw: function (chart, args) {
+      if (args.index !== 0) return;
+      var meta = chart.getDatasetMeta(args.index);
+      if (!meta || !meta.data) return;
+      var ctx = chart.ctx;
+      var items = meta.data.slice().sort(function (a, b) {
+        var aVal = a.$context && typeof a.$context.raw === "number" ? a.$context.raw : 0;
+        var bVal = b.$context && typeof b.$context.raw === "number" ? b.$context.raw : 0;
+        return bVal - aVal;
+      });
+      items.forEach(function (item) {
+        item.draw(ctx);
+      });
+      return false;
+    }
+  };
+
   function buildChart(tableId, labelKey, valueKey, chartType, unitLabel) {
     var data = readJson("chart-data-" + tableId);
     var canvas = document.getElementById("chart-" + tableId);
     if (!canvas || data.length === 0) return;
 
-    var labels = data.map(function (row) { return row[labelKey]; });
-    var values = data.map(function (row) { return row[valueKey]; });
+    var pairs = data.map(function (row) {
+      return { label: row[labelKey], value: row[valueKey] };
+    });
+    pairs.sort(function (a, b) { return b.value - a.value; });
+
+    var labels = pairs.map(function (row) { return row.label; });
+    var values = pairs.map(function (row) { return row.value; });
     var palette = ["#2f5d50", "#6b8f71", "#9aa874", "#c4c9a4", "#d7d0b7", "#bfa88e", "#9c7f6b", "#6e4c3c"];
     var colors = values.map(function (_value, idx) { return palette[idx % palette.length]; });
 
@@ -487,11 +829,21 @@ function buildChartInitScript(): string {
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        interaction: {
+          mode: "nearest",
+          intersect: false
+        },
         plugins: {
           legend: { display: true, position: "right" },
           tooltip: { callbacks: { label: function (context) { return context.label + ": " + context.raw; } } }
+        },
+        elements: {
+          arc: {
+            hoverOffset: 10
+          }
         }
-      }
+      },
+      plugins: [zOrderPlugin]
     });
   }
 

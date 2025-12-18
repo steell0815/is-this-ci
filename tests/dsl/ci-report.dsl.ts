@@ -263,6 +263,79 @@ export class CIReportDSL {
     }
   }
 
+  async thenNavigationIncludes(sectionIds: string[]): Promise<void> {
+    const html = this.reportHtml();
+    const navRegex = new RegExp("<nav[^>]*data-nav=\\\"report\\\"[^>]*>([\\s\\S]*?)</nav>", "i");
+    const navMatch = html.match(navRegex);
+    if (!navMatch) {
+      throw new Error("Report navigation not found.");
+    }
+    const navHtml = navMatch[1];
+    sectionIds.forEach((id) => {
+      if (!new RegExp(`href=\\\"#${id}\\\"`, "i").test(navHtml)) {
+        throw new Error(`Navigation missing link to #${id}.`);
+      }
+    });
+  }
+
+  async thenSectionsArePaged(sectionIds: string[]): Promise<void> {
+    const html = this.reportHtml();
+    sectionIds.forEach((id) => {
+      const sectionRegex = new RegExp(`<section[^>]*id=\\\"section-${id}\\\"[^>]*>`, "i");
+      const classRegex = new RegExp(`<section[^>]*id=\\\"section-${id}\\\"[^>]*class=\\\"[^\\\"]*page[^\\\"]*\\\"`, "i");
+      const classRegexAlt = new RegExp(`<section[^>]*class=\\\"[^\\\"]*page[^\\\"]*\\\"[^>]*id=\\\"section-${id}\\\"`, "i");
+      if (!sectionRegex.test(html) || (!classRegex.test(html) && !classRegexAlt.test(html))) {
+        throw new Error(`Section ${id} is not marked as a page section.`);
+      }
+    });
+  }
+
+  async thenGlossarySidebarPresent(): Promise<void> {
+    const html = this.reportHtml();
+    if (!/id=\"glossary-sidebar\"/i.test(html)) {
+      throw new Error("Glossary sidebar not found.");
+    }
+  }
+
+  async thenGlossaryIconsPresentForTables(tableIds: string[]): Promise<void> {
+    const html = this.reportHtml();
+    tableIds.forEach((id) => {
+      const regex = new RegExp(`data-glossary-table=\\\"${id}\\\"`, "i");
+      if (!regex.test(html)) {
+        throw new Error(`Glossary icon missing for table ${id}.`);
+      }
+    });
+  }
+
+  async thenGlossaryListsColumns(columnKeys: string[]): Promise<void> {
+    const html = this.reportHtml();
+    const glossaryRegex = new RegExp("<section[^>]*id=\\\"section-glossary\\\"[\\s\\S]*?</section>", "i");
+    const glossaryMatch = html.match(glossaryRegex);
+    if (!glossaryMatch) {
+      throw new Error("Glossary section not found.");
+    }
+    const glossaryHtml = glossaryMatch[0];
+    columnKeys.forEach((key) => {
+      if (!glossaryHtml.includes(key)) {
+        throw new Error(`Glossary missing column entry ${key}.`);
+      }
+    });
+  }
+
+  async thenChartsLayerSmallValuesOnTop(): Promise<void> {
+    const html = this.reportHtml();
+    if (!html.includes("zOrderByValue")) {
+      throw new Error("Chart init script does not include z-order layering.");
+    }
+  }
+
+  async thenChartsUseNearestHover(): Promise<void> {
+    const html = this.reportHtml();
+    if (!html.includes("intersect: false") || !html.includes("mode: \"nearest\"")) {
+      throw new Error("Chart init script does not enable nearest hover with intersect=false.");
+    }
+  }
+
   private assertBuckets(actual: OverallBucketExpectation[], expected: OverallBucketExpectation[]): void {
     const byBucket = (rows: OverallBucketExpectation[]) =>
       rows.reduce<Record<string, OverallBucketExpectation>>((acc, row) => {
