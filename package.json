@@ -1,7 +1,6 @@
 {
   "name": "is-this-ci",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
   "bin": {
     "is-this-ci": "bin/is-this-ci.js"
