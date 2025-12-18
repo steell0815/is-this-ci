@@ -19,7 +19,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.11.30",
-    "@cyclonedx/cyclonedx-npm": "^1.13.0",
+    "@cyclonedx/cyclonedx-npm": "^4.1.2",
     "typescript": "^5.4.5",
     "vitest": "^4.0.16"
   },
