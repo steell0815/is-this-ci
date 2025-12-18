@@ -23,5 +23,8 @@
     "@cyclonedx/cyclonedx-npm": "^1.13.0",
     "typescript": "^5.4.5",
     "vitest": "^4.0.16"
+  },
+  "publishConfig": {
+  "@YOUR-USERNAME:registry": "https://npm.pkg.github.com"
   }
 }
