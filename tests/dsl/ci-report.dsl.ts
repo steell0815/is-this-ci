@@ -241,6 +241,13 @@ export class CIReportDSL {
     }
   }
 
+  async thenCliWrapperNotGitignored(): Promise<void> {
+    const gitignore = this.session.readProjectFile(".gitignore");
+    if (gitignore.split("\n").some((line) => line.trim() === "/bin")) {
+      throw new Error("bin/ is gitignored, so the CLI wrapper will not be included.");
+    }
+  }
+
   async thenBuildIncludesSbom(_outputPath: string): Promise<void> {
     const pkg = this.session.readPackageJson();
     const scripts = pkg.scripts as Record<string, string> | undefined;

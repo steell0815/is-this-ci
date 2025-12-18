@@ -11,5 +11,6 @@ describe("cli installation", () => {
     await dsl.thenCliWrapperTargetsDist("is-this-ci");
     await dsl.thenCliSourceUsesJsExtension();
     await dsl.thenCliPassesProjectRootEnv();
+    await dsl.thenCliWrapperNotGitignored();
   });
 });
