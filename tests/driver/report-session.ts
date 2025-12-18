@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -62,8 +63,12 @@ EOF
 exit 0
 fi
 if [ "$cmd" = "rev-parse" ] && [ "\${1:-}" = "--show-toplevel" ]; then
-pwd
-exit 0
+  pwd
+  exit 0
+fi
+if [ "$cmd" = "rev-parse" ] && [ "\${1:-}" = "--short" ]; then
+  echo "deadbee"
+  exit 0
 fi
 echo "unsupported git command" >&2
 exit 1
@@ -133,6 +138,13 @@ exit 1
       throw new Error("Report not generated. Call whenGeneratingReport first.");
     }
     return readFileSync(this.reportPath, "utf8");
+  }
+
+  readGitShortRevision(): string {
+    if (!this.repoDir) {
+      throw new Error("Repo not initialized. Call givenRepoFixture first.");
+    }
+    return execFileSync("git", ["rev-parse", "--short", "HEAD"], { cwd: this.repoDir }).toString("utf8").trim();
   }
 
   dispose(): void {

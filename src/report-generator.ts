@@ -65,11 +65,15 @@ export function generateReport(options: ReportOptions): string {
   };
 
   const repoName = readRepoName(options.repoDir);
+  const revision = readRepoRevision(options.repoDir);
+  const packageVersion = readPackageVersion();
   const generatedAt = formatLocalTimestamp(new Date());
   const sbomJson = readSbomJson();
   const html = renderReportHtml(data, {
     repoName,
     branch: options.branch,
+    revision,
+    packageVersion,
     generatedAt,
     sbomJson,
     issues
@@ -175,6 +179,17 @@ function readRepoName(repoDir: string): string {
     return parts[parts.length - 1] || repoDir;
   } catch {
     return repoDir;
+  }
+}
+
+function readRepoRevision(repoDir: string): string {
+  try {
+    const output = execFileSync("git", ["rev-parse", "--short", "HEAD"], { cwd: repoDir })
+      .toString("utf8")
+      .trim();
+    return output || "unknown";
+  } catch {
+    return "unknown";
   }
 }
 
@@ -366,11 +381,25 @@ function readSbomJson(): string {
   }
 }
 
+function readPackageVersion(): string {
+  try {
+    const root = process.env.IS_THIS_CI_ROOT ?? process.cwd();
+    const pkgPath = resolve(root, "package.json");
+    const raw = readFileSync(pkgPath, "utf8");
+    const pkg = JSON.parse(raw) as { version?: string };
+    return pkg.version ?? "0.0.0";
+  } catch {
+    return "0.0.0";
+  }
+}
+
 function renderReportHtml(
   data: ReportData,
   context: {
     repoName: string;
     branch: string;
+    revision: string;
+    packageVersion: string;
     generatedAt: string;
     sbomJson: string;
     issues: string[];
@@ -599,6 +628,19 @@ function renderReportHtml(
       color: var(--muted);
       font-size: 13px;
     }
+    .version-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--table-border);
+      background: #fff;
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 600;
+      margin-left: 12px;
+      vertical-align: middle;
+    }
     .glossary-trigger {
       display: inline-flex;
       align-items: center;
@@ -657,7 +699,12 @@ function renderReportHtml(
 </head>
 <body>
   <header>
-    <h1>Is This CI Report</h1>
+    <h1>
+      Is This CI Report
+      <span class="version-badge" title="Package version and git revision">
+        v${escapeHtml(context.packageVersion)}+${escapeHtml(context.revision)}
+      </span>
+    </h1>
     <div class="meta">Repository: ${escapeHtml(context.repoName)} · Branch: ${escapeHtml(context.branch)}</div>
     <div class="meta">Generated locally from git log data at ${escapeHtml(context.generatedAt)}.</div>
     <div class="meta">

@@ -21,4 +21,15 @@ describe("report output", () => {
     await dsl.thenSbomEmbedded();
     await dsl.thenSunshineLinkPresent();
   });
+
+  it("shows a git short revision badge in the page title", async () => {
+    const dsl = new CIReportDSL();
+
+    await dsl.givenRepoFixture("fixtures/cluster-analysis");
+    await dsl.givenProjectRoot();
+    await dsl.whenGeneratingReport("origin/main");
+
+    await dsl.thenTitleIncludesVersionBadge();
+    await dsl.thenTitleIncludesPackageVersion();
+  });
 });

@@ -271,6 +271,24 @@ export class CIReportDSL {
     }
   }
 
+  async thenBuildUsesLocalVersionBump(): Promise<void> {
+    const pkg = this.session.readPackageJson();
+    const scripts = pkg.scripts as Record<string, string> | undefined;
+    if (!scripts?.build) {
+      throw new Error("package.json is missing a build script.");
+    }
+    if (!scripts.build.includes("scripts/bump-version.js")) {
+      throw new Error("build script does not include the local version bump script.");
+    }
+  }
+
+  async thenBumpScriptSkipsGlobalInstall(): Promise<void> {
+    const script = this.session.readProjectFile("scripts/bump-version.js");
+    if (!script.includes("npm_config_global") || !script.includes("IS_THIS_CI_SKIP_VERSION_BUMP")) {
+      throw new Error("Version bump script does not check for global installs.");
+    }
+  }
+
   async thenNavigationIncludes(sectionIds: string[]): Promise<void> {
     const html = this.reportHtml();
     const navRegex = new RegExp("<nav[^>]*data-nav=\\\"report\\\"[^>]*>([\\s\\S]*?)</nav>", "i");
@@ -355,6 +373,28 @@ export class CIReportDSL {
     const html = this.reportHtml();
     if (!html.includes('data-sunshine-url="https://cyclonedx.github.io/Sunshine"')) {
       throw new Error("Sunshine link is missing.");
+    }
+  }
+
+  async thenTitleIncludesVersionBadge(): Promise<void> {
+    const html = this.reportHtml();
+    const expected = this.session.readGitShortRevision();
+    const titleRegex = new RegExp(`<h1[^>]*>[\\s\\S]*${expected}[\\s\\S]*<\\/h1>`, "i");
+    if (!titleRegex.test(html)) {
+      throw new Error(`Report title does not include git short revision ${expected}.`);
+    }
+  }
+
+  async thenTitleIncludesPackageVersion(): Promise<void> {
+    const html = this.reportHtml();
+    const pkg = this.session.readPackageJson();
+    const version = String(pkg.version ?? "");
+    if (!version) {
+      throw new Error("package.json version is missing.");
+    }
+    const badgeRegex = new RegExp(`<span[^>]*class=\\\"version-badge\\\"[^>]*>[^<]*${version}[^<]*<\\/span>`, "i");
+    if (!badgeRegex.test(html)) {
+      throw new Error(`Report title badge does not include package version ${version}.`);
     }
   }
 
