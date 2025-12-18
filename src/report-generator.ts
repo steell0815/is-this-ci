@@ -1,6 +1,7 @@
-import { execFileSync } from "node:child_process";
-import { readFileSync, writeFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { execFileSync, spawnSync } from "node:child_process";
+import { closeSync, mkdtempSync, openSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 
 export type DelayBucket = "<1h" | "1-4h" | "4-8h" | ">8h";
 
@@ -55,7 +56,7 @@ type ReportOptions = {
 };
 
 export function generateReport(options: ReportOptions): string {
-  const entries = readLogEntries(options.repoDir, options.branch);
+  const { entries, issues } = readLogEntriesWithIssues(options.repoDir, options.branch);
   const data: ReportData = {
     overall_buckets: overallBuckets(entries),
     top10_authors: topAuthors(entries),
@@ -66,24 +67,91 @@ export function generateReport(options: ReportOptions): string {
   const repoName = readRepoName(options.repoDir);
   const generatedAt = formatLocalTimestamp(new Date());
   const sbomJson = readSbomJson();
-  const html = renderReportHtml(data, { repoName, branch: options.branch, generatedAt, sbomJson });
+  const html = renderReportHtml(data, {
+    repoName,
+    branch: options.branch,
+    generatedAt,
+    sbomJson,
+    issues
+  });
   writeFileSync(options.outputPath, html, "utf8");
   return options.outputPath;
 }
 
-function readLogEntries(repoDir: string, branch: string): LogEntry[] {
-  const output = execFileSync(
-    "git",
-    ["log", branch, "--pretty=format:%H|%an|%ae|%ad|%cd", "--date=iso"],
-    { cwd: repoDir }
-  )
-    .toString("utf8")
-    .trim();
+function readLogEntriesWithIssues(repoDir: string, branch: string): { entries: LogEntry[]; issues: string[] } {
+  const issues: string[] = [];
+  const output = readGitLogOutput(repoDir, branch, issues);
+  return { entries: parseLogOutput(output), issues };
+}
 
+function readGitLogOutput(repoDir: string, branch: string, issues: string[]): string {
+  try {
+    const output = execFileSync(
+      "git",
+      ["log", branch, "--pretty=format:%H|%an|%ae|%ad|%cd", "--date=iso"],
+      { cwd: repoDir, maxBuffer: gitMaxBuffer() }
+    )
+      .toString("utf8")
+      .trim();
+    return output;
+  } catch (error) {
+    const err = error as { message?: string; stdout?: Buffer; code?: string };
+    const summary = err.code ? `${err.code}: ${err.message}` : err.message ?? "Unknown git error";
+    issues.push(`git log failed: ${summary}`);
+    const fallback = readGitLogViaTempFile(repoDir, branch, issues);
+    if (fallback !== null) {
+      return fallback;
+    }
+    return err.stdout ? err.stdout.toString("utf8").trim() : "";
+  }
+}
+
+function gitMaxBuffer(): number {
+  const raw = process.env.IS_THIS_CI_GIT_MAX_BUFFER;
+  if (!raw) {
+    return 1024 * 1024 * 200;
+  }
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return 1024 * 1024 * 200;
+  }
+  return parsed;
+}
+
+function readGitLogViaTempFile(repoDir: string, branch: string, issues: string[]): string | null {
+  const tempDir = mkdtempSync(join(tmpdir(), "is-this-ci-git-log-"));
+  const filePath = join(tempDir, "git-log.txt");
+  const fd = openSync(filePath, "w");
+  try {
+    const result = spawnSync(
+      "git",
+      ["log", branch, "--pretty=format:%H|%an|%ae|%ad|%cd", "--date=iso"],
+      { cwd: repoDir, stdio: ["ignore", fd, "pipe"] }
+    );
+    if (result.error) {
+      issues.push(`git log fallback failed: ${result.error.message}`);
+      return null;
+    }
+    if (result.status !== 0) {
+      const stderr = result.stderr ? result.stderr.toString("utf8").trim() : "";
+      issues.push(`git log fallback failed: ${stderr || "Unknown error."}`);
+      return null;
+    }
+  } finally {
+    closeSync(fd);
+  }
+
+  try {
+    return readFileSync(filePath, "utf8").trim();
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true });
+  }
+}
+
+function parseLogOutput(output: string): LogEntry[] {
   if (!output) {
     return [];
   }
-
   return output.split("\n").map((line) => {
     const parts = line.split("|");
     return {
@@ -300,7 +368,13 @@ function readSbomJson(): string {
 
 function renderReportHtml(
   data: ReportData,
-  context: { repoName: string; branch: string; generatedAt: string; sbomJson: string }
+  context: {
+    repoName: string;
+    branch: string;
+    generatedAt: string;
+    sbomJson: string;
+    issues: string[];
+  }
 ): string {
   const glossary = {
     tables: {
@@ -423,7 +497,8 @@ function renderReportHtml(
     renderSection("top10_authors", "Top 10 Authors", data.top10_authors, glossary, tableTooltips),
     renderSection("cluster_summary", "Cluster Summary", data.cluster_summary, glossary, tableTooltips),
     renderSection("cluster_details", "Cluster Details", data.cluster_details, glossary, tableTooltips),
-    renderGlossarySection(glossary)
+    renderGlossarySection(glossary),
+    renderIssuesSection(context.issues)
   ].join("\n");
 
   const chartJsBundle = loadChartJsBundle();
@@ -606,6 +681,7 @@ function renderReportHtml(
     <a href="#cluster_summary">Cluster summary</a>
     <a href="#cluster_details">Cluster details</a>
     <a href="#glossary">Glossary</a>
+    <a href="#issues">Issues</a>
   </nav>
   ${sections}
   <aside class="sidebar" id="glossary-sidebar" aria-hidden="true">
@@ -711,6 +787,18 @@ function renderGlossarySection(glossary: {
     <thead><tr><th>Topic</th><th>What it represents</th><th>How it is analyzed</th></tr></thead>
     <tbody>${tableEntries}${columnEntries}</tbody>
   </table>
+</section>`;
+}
+
+function renderIssuesSection(issues: string[]): string {
+  const rows = issues.length
+    ? issues.map((issue) => `<li>${escapeHtml(issue)}</li>`).join("")
+    : "<li>No issues detected during analysis.</li>";
+  return `
+<section class="report-section page" id="section-issues">
+  <a id="issues" class="page-anchor"></a>
+  <h2>Issues</h2>
+  <ul>${rows}</ul>
 </section>`;
 }
 

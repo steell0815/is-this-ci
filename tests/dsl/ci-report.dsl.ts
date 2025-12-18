@@ -54,6 +54,14 @@ export class CIReportDSL {
     this.session.setProjectRoot(process.cwd());
   }
 
+  async givenGitLogOutput(lines: string[]): Promise<void> {
+    this.session.setGitLogOutput(lines.join("\n"));
+  }
+
+  async givenGitLogMaxBuffer(bytes: number): Promise<void> {
+    this.session.setEnv("IS_THIS_CI_GIT_MAX_BUFFER", String(bytes));
+  }
+
   async thenOverallBucketsEqual(expected: OverallBucketExpectation[]): Promise<void> {
     if (!this.analysisBranch) {
       throw new Error("Analysis branch not set. Call whenAnalyzingBranch first.");
@@ -347,6 +355,22 @@ export class CIReportDSL {
     const html = this.reportHtml();
     if (!html.includes('data-sunshine-url="https://cyclonedx.github.io/Sunshine"')) {
       throw new Error("Sunshine link is missing.");
+    }
+  }
+
+  async thenReportTableDataEquals(tableId: string, expected: unknown): Promise<void> {
+    const tableData = this.readEmbeddedJson(tableId, "table-data");
+    if (JSON.stringify(tableData) !== JSON.stringify(expected)) {
+      throw new Error(`Report table data mismatch for ${tableId}. Expected ${JSON.stringify(expected)}.`);
+    }
+  }
+
+  async thenIssuesInclude(expected: string): Promise<void> {
+    const html = this.reportHtml();
+    const issueRegex = new RegExp(`<section[^>]*id=\\\"section-issues\\\"[\\s\\S]*?</section>`, "i");
+    const match = html.match(issueRegex);
+    if (!match || !match[0].includes(expected)) {
+      throw new Error(`Issues section does not include \"${expected}\".`);
     }
   }
 

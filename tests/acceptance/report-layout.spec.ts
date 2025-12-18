@@ -13,7 +13,8 @@ describe("report layout", () => {
       "top10_authors",
       "cluster_summary",
       "cluster_details",
-      "glossary"
+      "glossary",
+      "issues"
     ]);
 
     await dsl.thenSectionsArePaged([
@@ -21,7 +22,8 @@ describe("report layout", () => {
       "top10_authors",
       "cluster_summary",
       "cluster_details",
-      "glossary"
+      "glossary",
+      "issues"
     ]);
 
     await dsl.thenGlossarySidebarPresent();
