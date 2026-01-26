@@ -28,7 +28,7 @@
     "@types/node": "^25.0.10",
     "@cyclonedx/cyclonedx-npm": "^4.1.2",
     "typescript": "^5.4.5",
-    "vitest": "^4.0.17"
+    "vitest": "^4.0.18"
   },
   "publishConfig": {
     "@YOUR-USERNAME:registry": "https://npm.pkg.github.com"
